@@ -5,13 +5,16 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-undefined_temporary = "9QGy73JAE5EXbHuds7xboBewskvsoxeymRiRQvLrdFYR"
+undefined_temporary = "GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH"
+
+[programs.Devnet]
+undefined_temporary = "GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "/Users/nicolasbeaudouin/.config/solana/id.json"
 
 [scripts]

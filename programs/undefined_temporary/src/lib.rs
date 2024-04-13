@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("4CzYYTgiCb87LKi1HGWTUpGA4JQJJ4NtdLrkYEesfuN3");
+declare_id!("GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH");
 
 #[program]
 pub mod undefined_temporary {
@@ -18,8 +18,24 @@ pub mod undefined_temporary {
     use super::*;
 
     /* Initializes a Digital Idendity by an idendity issuer. */
-    pub fn add_idendity(ctx: Context<Initialize>, user: Pubkey ) -> Result<()> {
-        initialize_id::initialize_id(ctx, user)
+    pub fn add_idendity(ctx: Context<InitializeId>,id_validity_duration: i64 ) -> Result<()> {
+        id_instructions::initialize_id(ctx, id_validity_duration)
+    }
+
+    /* Initializes a Digital Idendity by an idendity issuer. */
+    pub fn add_issuer_to_idendity(ctx: Context<AddIssuer>,id_validity_duration: i64) -> Result<()> {
+        id_instructions::add_issuer(ctx, id_validity_duration)
+    }
+
+
+    // Recovery Instructions
+
+    pub fn initialize_recovery(ctx: Context<InitializeRecovery>) -> Result<()> {
+        recovery_instructions::initialize_recovery(ctx)
+    }
+
+    pub fn recover_account(ctx: Context<RecoverAccount>) -> Result<()> {
+        recovery_instructions::recovering_account(ctx)
     }
 
     pub fn transfer_hook(ctx: Context<TransferHook>) -> Result<()> {
@@ -33,8 +49,8 @@ pub mod undefined_temporary {
     pub fn add_token_account(ctx: Context<AddTokenAccount>) -> Result<()> {
         Ok(())
     }
-    pub fn initialize_token_mint(ctx: Context<InitializeTokenMint>, space :u64) -> Result<()> {
-        initialize_mint::initialize_token_mint(ctx, space)
+    pub fn initialize_token_mint(ctx: Context<InitializeTokenMint>) -> Result<()> {
+        initialize_mint::initialize_token_mint(ctx)
     }
     
     pub fn fallback<'info>(

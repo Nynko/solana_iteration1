@@ -1,5 +1,5 @@
-pub mod initialize_id;
-pub use initialize_id::*;
+pub mod id_instructions;
+pub use id_instructions::*;
 
 pub mod transfer_hook;
 pub use transfer_hook::*;
@@ -10,5 +10,6 @@ pub use add_token_account::*;
 pub mod initialize_mint;
 pub use initialize_mint::*;
 
-
+pub mod recovery_instructions;
+pub use recovery_instructions::*;
 
