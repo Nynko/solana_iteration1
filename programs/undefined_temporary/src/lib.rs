@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("6qjkthwYhnL5CeMXWNjVUTaSrPxAWxjaRMqKnASF3pmE");
+declare_id!("6UaP6nmm63bHFZzhVRYSSz6MdvZHvNRDjgVVdujd6etV");
 
 #[program]
 pub mod undefined_temporary {
@@ -56,7 +56,7 @@ pub mod undefined_temporary {
     }
 
     pub fn add_token_account(ctx: Context<AddTokenAccount>) -> Result<()> {
-        Ok(())
+        add_token_account::_add_token_account(ctx)
     }
     
     pub fn fallback<'info>(
