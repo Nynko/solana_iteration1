@@ -14,7 +14,7 @@ undefined_temporary = "GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Devnet"
+cluster = "localnet"
 wallet = "/Users/nicolasbeaudouin/.config/solana/id.json"
 
 [scripts]

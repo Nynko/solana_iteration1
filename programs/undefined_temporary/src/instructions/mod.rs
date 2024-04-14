@@ -13,3 +13,5 @@ pub use initialize_mint::*;
 pub mod recovery_instructions;
 pub use recovery_instructions::*;
 
+pub mod wrapper;
+pub use wrapper::*;

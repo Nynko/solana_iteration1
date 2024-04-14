@@ -4,12 +4,13 @@ interface AssociatedTokenAccounts {
   owner: anchor.web3.Keypair;
   token_account: anchor.web3.PublicKey;
   idendity: anchor.web3.PublicKey;
+  last_tx: anchor.web3.PublicKey;
   recovery: anchor.web3.PublicKey;
 }
 interface AccountArgs {
   users: AssociatedTokenAccounts[];
   issuer: anchor.web3.Keypair;
-  mint: anchor.web3.Keypair;
+  mint: anchor.web3.PublicKey;
 }
 
 export { AccountArgs, AssociatedTokenAccounts };

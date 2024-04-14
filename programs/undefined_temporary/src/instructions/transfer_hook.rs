@@ -5,7 +5,7 @@ use spl_tlv_account_resolution::{
     account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
 };
 
-use crate::{IdAccount, IdendityError};
+use crate::{IdAccount, IdendityError, LastTx};
 
 #[derive(Accounts)]
 
@@ -51,10 +51,12 @@ pub struct TransferHook<'info> {
     pub idendity_sender: Account<'info, IdAccount>, // 5
     #[account(seeds = [b"identity", destination_token.key().as_ref()], bump)]
     pub idendity_receiver: Account<'info, IdAccount>, // 6
+    #[account(seeds = [b"last_tx", owner.key().as_ref()], bump)]
+    pub last_tx: Account<'info, LastTx>, // 7
 }
 
 
-pub fn initialize_extra_account_meta_list(
+pub fn _initialize_extra_account_meta_list(
     ctx: Context<InitializeExtraAccountMetaList>,
 ) -> Result<()> {
 
@@ -79,6 +81,15 @@ pub fn initialize_extra_account_meta_list(
             false, // is_signer
             false,  // is_writable
         )?,
+        // LasTx PDA
+        ExtraAccountMeta::new_with_seeds(
+            &[
+            Seed::Literal { bytes: b"last_tx".to_vec() },
+            Seed::AccountKey { index: 3 },
+            ],
+            false, // is_signer
+            true,  // is_writable
+        )?, 
     ];
 
     // calculate account size
@@ -117,13 +128,16 @@ pub fn initialize_extra_account_meta_list(
     Ok(())
 }
 
-pub fn transfer_hook(ctx: Context<TransferHook>) -> Result<()> {
+pub fn _transfer_hook(ctx: Context<TransferHook>) -> Result<()> {
 
     // Check if seed is proper one for the account
     // Check if issuer is authorized 
 
     check_idendities(&ctx)?;
     check_not_recovered(&ctx)?;
+
+    let last_tx = &mut ctx.accounts.last_tx;
+    last_tx.last_tx_timestamp = Clock::get()?.unix_timestamp;
    
     Ok(())
 }

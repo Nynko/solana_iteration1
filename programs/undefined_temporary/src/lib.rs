@@ -9,7 +9,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH");
+declare_id!("6qjkthwYhnL5CeMXWNjVUTaSrPxAWxjaRMqKnASF3pmE");
 
 #[program]
 pub mod undefined_temporary {
@@ -19,38 +19,44 @@ pub mod undefined_temporary {
 
     /* Initializes a Digital Idendity by an idendity issuer. */
     pub fn add_idendity(ctx: Context<InitializeId>,id_validity_duration: i64 ) -> Result<()> {
-        id_instructions::initialize_id(ctx, id_validity_duration)
+        id_instructions::_initialize_id(ctx, id_validity_duration)
     }
 
     /* Initializes a Digital Idendity by an idendity issuer. */
     pub fn add_issuer_to_idendity(ctx: Context<AddIssuer>,id_validity_duration: i64) -> Result<()> {
-        id_instructions::add_issuer(ctx, id_validity_duration)
+        id_instructions::_add_issuer(ctx, id_validity_duration)
+    }
+
+    // Initialize Token Mint
+    pub fn initialize_token_mint(ctx: Context<InitializeTokenMint>) -> Result<()> {
+        initialize_mint::_initialize_token_mint(ctx)
+    }
+
+    pub fn mint_to(ctx: Context<MintTo>, amount: u64) -> Result<()> {
+        wrapper::_mint_to(ctx, amount)
     }
 
 
     // Recovery Instructions
 
-    pub fn initialize_recovery(ctx: Context<InitializeRecovery>) -> Result<()> {
-        recovery_instructions::initialize_recovery(ctx)
+    pub fn initialize_recovery(ctx: Context<InitializeRecovery>, recovery_delegates: Vec<Pubkey>, minimum_signatures: u8 ) -> Result<()> {
+        recovery_instructions::_initialize_recovery(ctx,recovery_delegates,minimum_signatures)
     }
 
     pub fn recover_account(ctx: Context<RecoverAccount>) -> Result<()> {
-        recovery_instructions::recovering_account(ctx)
+        recovery_instructions::_recovering_account(ctx)
     }
 
     pub fn transfer_hook(ctx: Context<TransferHook>) -> Result<()> {
-        transfer_hook::transfer_hook(ctx)
+        transfer_hook::_transfer_hook(ctx)
     }
 
     pub fn initialize_extra_account_meta_list(ctx: Context<InitializeExtraAccountMetaList>) -> Result<()> {
-        transfer_hook::initialize_extra_account_meta_list(ctx)
+        transfer_hook::_initialize_extra_account_meta_list(ctx)
     }
 
     pub fn add_token_account(ctx: Context<AddTokenAccount>) -> Result<()> {
         Ok(())
-    }
-    pub fn initialize_token_mint(ctx: Context<InitializeTokenMint>) -> Result<()> {
-        initialize_mint::initialize_token_mint(ctx)
     }
     
     pub fn fallback<'info>(

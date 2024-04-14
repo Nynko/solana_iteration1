@@ -24,6 +24,7 @@ import { Keypair, PublicKey, sendAndConfirmTransaction } from "@solana/web3.js";
 import * as fs from "fs";
 import { AccountArgs } from "./test_interfaces";
 import { init_recovery, test_recovery } from "./test_recovery";
+import { init_mint } from "./test_initialize_mint";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,7 +59,8 @@ describe("undefined_temporary", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const DEVNET = true;
+  const DEVNET = false;
+  const INIT = false;
 
   const program = anchor.workspace
     .UndefinedTemporary as Program<UndefinedTemporary>;
@@ -78,50 +80,59 @@ describe("undefined_temporary", () => {
   let user2: anchor.web3.Keypair;
   let user3: anchor.web3.Keypair;
   let issuer: anchor.web3.Keypair;
-  let mint_keypair: anchor.web3.Keypair;
-  let mint: anchor.web3.PublicKey;
 
-  if (DEVNET) {
+  if (DEVNET && !INIT) {
     // Get the keypairs from json
 
     user1 = loadKeypairFromFile("user1.json");
     user2 = loadKeypairFromFile("user2.json");
     user3 = loadKeypairFromFile("user3.json");
     issuer = loadKeypairFromFile("issuer.json");
-    mint_keypair = loadKeypairFromFile("mint.json");
-    mint = mint_keypair.publicKey;
+    // mint_keypair = loadKeypairFromFile("mint.json");
+    // mint = mint_keypair.publicKey;
   } else {
     user1 = anchor.web3.Keypair.generate();
     user2 = anchor.web3.Keypair.generate();
     user3 = anchor.web3.Keypair.generate();
     issuer = anchor.web3.Keypair.generate();
-    mint_keypair = anchor.web3.Keypair.generate();
-    mint = mint_keypair.publicKey;
+    // mint_keypair = anchor.web3.Keypair.generate();
+    // mint = mint_keypair.publicKey;
 
-    console.log(`User1: ${user1}`);
-    console.log(`User2: ${user2}`);
-    console.log(`User3: ${user3}`);
-    console.log(`Issuer: ${issuer}`);
+    console.log(`User1: ${user1.publicKey}`);
+    console.log(`User2: ${user2.publicKey}`);
+    console.log(`User3: ${user3.publicKey}`);
+    console.log(`Issuer: ${issuer.publicKey}`);
 
-    // Save the keypairs
-    fs.writeFileSync("user1.json", JSON.stringify(Array.from(user1.secretKey)));
-    fs.writeFileSync("user2.json", JSON.stringify(Array.from(user2.secretKey)));
-    fs.writeFileSync("user3.json", JSON.stringify(Array.from(user3.secretKey)));
-    fs.writeFileSync(
-      "issuer.json",
-      JSON.stringify(Array.from(issuer.secretKey))
-    );
-    fs.writeFileSync(
-      "mint.json",
-      JSON.stringify(Array.from(mint_keypair.secretKey))
-    );
+    if (INIT) {
+      // Save the keypairs
+      fs.writeFileSync(
+        "user1.json",
+        JSON.stringify(Array.from(user1.secretKey))
+      );
+      fs.writeFileSync(
+        "user2.json",
+        JSON.stringify(Array.from(user2.secretKey))
+      );
+      fs.writeFileSync(
+        "user3.json",
+        JSON.stringify(Array.from(user3.secretKey))
+      );
+      fs.writeFileSync(
+        "issuer.json",
+        JSON.stringify(Array.from(issuer.secretKey))
+      );
+      // fs.writeFileSync(
+      //   "mint.json",
+      //   JSON.stringify(Array.from(mint_keypair.secretKey))
+      // );
+    }
 
     const LAMPORTS_PER_SOL = 1000000000;
 
     it("Aidrop some SOL", async () => {
-      // await anchor
-      //   .getProvider()
-      //   .connection.requestAirdrop(user1.publicKey, 10 * LAMPORTS_PER_SOL);
+      await anchor
+        .getProvider()
+        .connection.requestAirdrop(wallet.publicKey, 10 * LAMPORTS_PER_SOL);
 
       // await anchor
       //   .getProvider()
@@ -161,12 +172,11 @@ describe("undefined_temporary", () => {
     });
   }
 
-  // const [mint] = anchor.web3.PublicKey.findProgramAddressSync(
-  //   [Buffer.from(anchor.utils.bytes.utf8.encode("mint"))],
-  //   program.programId
-  // );
-
-  console.log(`Mint: ${mint}`);
+  const [mint] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from(anchor.utils.bytes.utf8.encode("mint"))],
+    program.programId
+  );
+  console.log("Mint address", mint.toBase58());
 
   // Sender token account address
   const sourceTokenAccount = getAssociatedTokenAddressSync(
@@ -259,91 +269,122 @@ describe("undefined_temporary", () => {
     program.programId
   );
 
+  let [recovery_authority1] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("recovery_authority")),
+      user1.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
+  let [recovery_authority2] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("recovery_authority")),
+      user2.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
+  let [recovery_authority3] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("recovery_authority")),
+      user3.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
   const account_args: AccountArgs = {
     users: [
       {
         owner: user1,
         token_account: sourceTokenAccount,
         idendity: pda_id_1,
-        recovery: pda_last_tx_1,
+        last_tx: pda_last_tx_1,
+        recovery: recovery_authority1,
       },
       {
         owner: user2,
         token_account: destinationTokenAccount,
         idendity: pda_id_2,
-        recovery: pda_last_tx_2,
+        last_tx: pda_last_tx_2,
+        recovery: recovery_authority2,
       },
       {
         owner: user3,
         token_account: ThirdTokenAccount,
         idendity: pda_id_3,
-        recovery: pda_last_tx_3,
+        last_tx: pda_last_tx_3,
+        recovery: recovery_authority3,
       },
     ],
     issuer: issuer,
-    mint: mint_keypair,
+    mint: mint,
   };
 
-  it("Create Mint Account with Transfer Hook Extension", async () => {
-    const extensions = [ExtensionType.TransferHook];
-    const mintLen = getMintLen(extensions);
-    const lamports = await anchor
-      .getProvider()
-      .connection.getMinimumBalanceForRentExemption(mintLen);
-
-    // try {
-    //   const tx = await program.methods
-    //   .initializeTokenMint(new anchor.BN(mintLen))
-    //   .accounts({ mint: mint, user: user1.publicKey})
-    //   .signers([user1])
-    //   .rpc();
-
-    // console.log(`Transaction Signature: ${tx}`);
-
-    // } catch (error) {
-    //   console.log(error);
-
-    // }
-
-    try {
-      const transaction = new anchor.web3.Transaction().add(
-        anchor.web3.SystemProgram.createAccount({
-          fromPubkey: user1.publicKey,
-          newAccountPubkey: mint,
-          space: mintLen,
-          lamports: lamports,
-          programId: TOKEN_2022_PROGRAM_ID,
-        }),
-        createInitializeTransferHookInstruction(
-          mint,
-          user1.publicKey,
-          program.programId, // Transfer Hook Program ID
-          TOKEN_2022_PROGRAM_ID
-        ),
-        createInitializeMintInstruction(
-          mint,
-          decimals,
-          user1.publicKey,
-          null,
-          TOKEN_2022_PROGRAM_ID
-        )
-      );
-
-      const txSig = await sendAndConfirmTransaction(
-        anchor.getProvider().connection,
-        transaction,
-        [user1, mint_keypair]
-      );
-      console.log(`Transaction Signature: ${txSig}`);
-    } catch (error) {
-      console.log(error);
-      expect(error).to.be.undefined;
-    }
+  it("Create Mint", async () => {
+    await init_mint(account_args, program);
   });
+
+  // it("Create Mint Account with Transfer Hook Extension", async () => {
+  //   const extensions = [ExtensionType.TransferHook];
+  //   const mintLen = getMintLen(extensions);
+  //   const lamports = await anchor
+  //     .getProvider()
+  //     .connection.getMinimumBalanceForRentExemption(mintLen);
+
+  //   // try {
+  //   //   const tx = await program.methods
+  //   //   .initializeTokenMint(new anchor.BN(mintLen))
+  //   //   .accounts({ mint: mint, user: user1.publicKey})
+  //   //   .signers([user1])
+  //   //   .rpc();
+
+  //   // console.log(`Transaction Signature: ${tx}`);
+
+  //   // } catch (error) {
+  //   //   console.log(error);
+
+  //   // }
+
+  //   try {
+  //     const transaction = new anchor.web3.Transaction().add(
+  //       anchor.web3.SystemProgram.createAccount({
+  //         fromPubkey: user1.publicKey,
+  //         newAccountPubkey: mint,
+  //         space: mintLen,
+  //         lamports: lamports,
+  //         programId: TOKEN_2022_PROGRAM_ID,
+  //       }),
+  //       createInitializeTransferHookInstruction(
+  //         mint,
+  //         user1.publicKey,
+  //         program.programId, // Transfer Hook Program ID
+  //         TOKEN_2022_PROGRAM_ID
+  //       ),
+  //       createInitializeMintInstruction(
+  //         mint,
+  //         decimals,
+  //         user1.publicKey,
+  //         null,
+  //         TOKEN_2022_PROGRAM_ID
+  //       )
+  //     );
+
+  //     const txSig = await sendAndConfirmTransaction(
+  //       anchor.getProvider().connection,
+  //       transaction,
+  //       [user1, mint_keypair]
+  //     );
+  //     console.log(`Transaction Signature: ${txSig}`);
+  //   } catch (error) {
+  //     console.log(error);
+  //     expect(error).to.be.undefined;
+  //   }
+  // });
 
   // Create the two token accounts for the transfer-hook enabled mint
   // Fund the sender token account with 100 tokens
-  it("Create Token Accounts and Mint Tokens", async () => {
+  it("Create Token Accounts", async () => {
     // 100 tokens
     const amount = 100 * 10 ** decimals;
 
@@ -372,15 +413,15 @@ describe("undefined_temporary", () => {
           mint,
           TOKEN_2022_PROGRAM_ID,
           ASSOCIATED_TOKEN_PROGRAM_ID
-        ),
-        createMintToInstruction(
-          mint,
-          sourceTokenAccount,
-          user1.publicKey,
-          amount,
-          [],
-          TOKEN_2022_PROGRAM_ID
         )
+        // createMintToInstruction(
+        //   mint,
+        //   sourceTokenAccount,
+        //   program.programId,
+        //   amount,
+        //   [],
+        //   TOKEN_2022_PROGRAM_ID
+        // )
       );
 
       const txSig = await sendAndConfirmTransaction(
@@ -390,6 +431,29 @@ describe("undefined_temporary", () => {
       );
 
       console.log(`Transaction Signature: ${txSig}`);
+    } catch (error) {
+      console.log(error);
+      expect(error).to.be.undefined;
+    }
+  });
+
+  it("Mint tokens", async () => {
+    // 100 tokens
+    const amount = 100 * 10 ** decimals;
+
+    try {
+      const tx = await program.methods
+        .mintTo(new anchor.BN(amount))
+        .accounts({
+          mint: mint,
+          toTokenAccount: sourceTokenAccount,
+          ownerTokenAccount: user1.publicKey,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([user1])
+        .rpc();
+
+      console.log(`Transaction Signature: ${tx}`);
     } catch (error) {
       console.log(error);
       expect(error).to.be.undefined;
@@ -427,6 +491,10 @@ describe("undefined_temporary", () => {
       console.log(error);
       expect(error).to.be.undefined;
     }
+  });
+
+  it("Init recovery Account", async () => {
+    await init_recovery(account_args, program);
   });
 
   // Account to store extra accounts required by the transfer hook instruction
@@ -598,10 +666,6 @@ describe("undefined_temporary", () => {
       ).to.be.true;
       //
     }
-  });
-
-  it("Init recovery Account", async () => {
-    await init_recovery(account_args, program);
   });
 
   it("Recovering Account", async () => {

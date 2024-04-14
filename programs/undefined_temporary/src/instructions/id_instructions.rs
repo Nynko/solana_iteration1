@@ -65,7 +65,7 @@ pub enum IdendityError {
 
 
 
-pub fn initialize_id(ctx: Context<InitializeId>, id_validity_duration: i64) -> Result<()> {
+pub fn _initialize_id(ctx: Context<InitializeId>, id_validity_duration: i64) -> Result<()> {
     let clock = Clock::get()?;
     let idendity = &mut ctx.accounts.idendity;
     idendity.owner = ctx.accounts.owner.key().clone();
@@ -82,7 +82,7 @@ pub fn initialize_id(ctx: Context<InitializeId>, id_validity_duration: i64) -> R
 }
 
 
-pub fn add_issuer(ctx: Context<AddIssuer>, id_validity_duration: i64) -> Result<()> {
+pub fn _add_issuer(ctx: Context<AddIssuer>, id_validity_duration: i64) -> Result<()> {
 
     // Check if the issuer is in the list of authorized issuers or if they have a signature or smth like that
 

@@ -9,13 +9,16 @@ export async function init_recovery(
   program: anchor.Program<UndefinedTemporary>
 ) {
   let user1 = args.users[0];
+  let user2 = args.users[1];
+  let user3 = args.users[2];
   try {
     const tx = await program.methods
-      .initializeRecovery()
+      .initializeRecovery([user3.owner.publicKey, user2.owner.publicKey], 2)
       .accounts({
-        lastTx: user1.recovery,
+        lastTx: user1.last_tx,
         payer: user1.owner.publicKey,
         owner: user1.owner.publicKey,
+        recoveryAuthority: user1.recovery,
       })
       .signers([user1.owner])
       .rpc();
@@ -32,6 +35,7 @@ export async function test_recovery(
 ) {
   let user1 = args.users[0];
   let user2 = args.users[1];
+  let user3 = args.users[2];
   let issuer = args.issuer;
   try {
     const tx = await program.methods
@@ -39,14 +43,19 @@ export async function test_recovery(
       .accounts({
         idendity: user1.idendity,
         owner: user1.owner.publicKey,
-        recoverer: issuer.publicKey,
-        lastTx: user1.recovery,
+        lastTx: user1.last_tx,
         tokenAccount: user1.token_account,
         tokenProgram: TOKEN_2022_PROGRAM_ID,
         newTokenAccount: user2.token_account,
         newOwner: user2.owner.publicKey,
+        mint: args.mint,
+        recoveryAuthority: user1.recovery,
       })
-      .signers([issuer])
+      .remainingAccounts([
+        { pubkey: user3.owner.publicKey, isSigner: true, isWritable: false },
+        { pubkey: user2.owner.publicKey, isSigner: true, isWritable: false },
+      ])
+      .signers([user3.owner, user2.owner])
       .rpc();
 
     console.log("Your transaction signature for recovery", tx);
