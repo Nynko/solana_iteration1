@@ -6,11 +6,11 @@ pub struct InitializeId<'info> {
     #[account(mut)]
     pub issuer: Signer<'info>,
     #[account(init, seeds = [b"identity", token_account.key().as_ref()], bump, payer = issuer, space = 8 + 32 + 32 + 4 + 49 + 4)]
-    pub idendity: Account<'info,IdAccount>,
+    pub idendity: Account<'info, IdAccount>,
     /// CHECK:
     pub owner: AccountInfo<'info>,
     #[account(token::authority = owner.key())]
-    pub token_account : InterfaceAccount<'info,TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -24,29 +24,29 @@ pub struct AddIssuer<'info> {
     /// CHECK:
     pub owner: AccountInfo<'info>,
     #[account(token::authority = owner.key())]
-    pub token_account : InterfaceAccount<'info,TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
-
 #[account]
-pub struct IdAccount { // 8 + 68 + issuers.len() * 49  + 4 + optional(1* 32)
-    pub owner: Pubkey, // 32
+pub struct IdAccount {
+    // 8 + 68 + issuers.len() * 49  + 4 + optional(1* 32)
+    pub owner: Pubkey,         // 32
     pub token_account: Pubkey, // 32
-    pub issuers: Vec<Issuer>, // 4 + 1* 49
+    pub issuers: Vec<Issuer>,  // 4 + 1* 49
     pub recovered_token_address: Vec<Pubkey>, // 4 + optional(1* 32) We do this to only have to pay 4 bytes most of the time // TODO: maybe do manually for cheaper
-    // recovered_address is the token account address of the new owner for this token
+                                              // recovered_address is the token account address of the new owner for this token
 }
-// The Idendity field "recovered_address" should be used if the account has been frozen (recovered)
-
+// The Idendity field "recovered_address" should be used if the account has been recovered
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct Issuer { // Total 49
-    pub key: Pubkey, // 32
+pub struct Issuer {
+    // Total 49
+    pub key: Pubkey,        // 32
     pub last_modified: i64, // 8
-    pub expires_at: i64, // 8
-    pub active: bool, // 1
+    pub expires_at: i64,    // 8
+    pub active: bool,       // 1
 }
 
 #[error_code]
@@ -63,8 +63,6 @@ pub enum IdendityError {
     IdendityAlreadyRecovered,
 }
 
-
-
 pub fn _initialize_id(ctx: Context<InitializeId>, id_validity_duration: i64) -> Result<()> {
     let clock = Clock::get()?;
     let idendity = &mut ctx.accounts.idendity;
@@ -77,17 +75,15 @@ pub fn _initialize_id(ctx: Context<InitializeId>, id_validity_duration: i64) -> 
         expires_at: clock.unix_timestamp + id_validity_duration,
         active: true,
     };
-    idendity.issuers =  vec![issuer];
+    idendity.issuers = vec![issuer];
     Ok(())
 }
 
-
 pub fn _add_issuer(ctx: Context<AddIssuer>, id_validity_duration: i64) -> Result<()> {
-
     // Check if the issuer is in the list of authorized issuers or if they have a signature or smth like that
 
     let issuers = &mut ctx.accounts.idendity.issuers;
-    if issuers.iter().any(|i| i.key == ctx.accounts.issuer.key()){
+    if issuers.iter().any(|i| i.key == ctx.accounts.issuer.key()) {
         return Err(IdendityError::IdendityAlreadyExists.into());
     }
     let current_timestamp = Clock::get()?.unix_timestamp;

@@ -1,11 +1,20 @@
-use anchor_lang::{prelude::*, system_program::{CreateAccount,create_account}};
-use anchor_spl::{associated_token::AssociatedToken,  token_interface::{Mint, TokenAccount, TokenInterface}};
-use spl_transfer_hook_interface::instruction::ExecuteInstruction;
+use anchor_lang::{
+    prelude::*,
+    system_program::{create_account, CreateAccount},
+};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 use spl_tlv_account_resolution::{
     account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
 };
+use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
-use crate::{IdAccount, IdendityError, LastTx};
+use crate::{
+    apply_two_auth_functions, IdAccount, IdendityError, LastTx, TransactionAproval, TwoAuthError,
+    TwoAuthParameters,
+};
 
 #[derive(Accounts)]
 
@@ -20,27 +29,27 @@ pub struct InitializeExtraAccountMetaList<'info> {
     )]
     pub extra_account_meta_list: AccountInfo<'info>,
     // #[account(seeds = [b"mint"],bump)]
-    /// CHECK: 
+    /// CHECK:
     pub mint: InterfaceAccount<'info, Mint>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
- 
+
 #[derive(Accounts)]
 pub struct TransferHook<'info> {
     #[account(
         token::mint = mint,
         token::authority = owner,
     )]
-    pub source_token: InterfaceAccount<'info, TokenAccount>, // 0 
-    pub mint: InterfaceAccount<'info, Mint>, // 1 
+    pub source_token: InterfaceAccount<'info, TokenAccount>, // 0
+    pub mint: InterfaceAccount<'info, Mint>, // 1
     #[account(
         token::mint = mint,
     )]
     pub destination_token: InterfaceAccount<'info, TokenAccount>, // 2
     /// CHECK: source token account owner, can be SystemAccount or PDA owned by another program
-    pub owner: UncheckedAccount<'info>, // 3 
+    pub owner: UncheckedAccount<'info>, // 3
     /// CHECK: ExtraAccountMetaList Account, must use these seeds
     #[account(
     seeds = [b"extra-account-metas", mint.key().as_ref()],
@@ -53,43 +62,73 @@ pub struct TransferHook<'info> {
     pub idendity_receiver: Account<'info, IdAccount>, // 6
     #[account(seeds = [b"last_tx", owner.key().as_ref()], bump)]
     pub last_tx: Account<'info, LastTx>, // 7
+    #[account(seeds=[b"two_auth", source_token.key().as_ref()], bump)]
+    pub two_auth: Account<'info, TwoAuthParameters>, // 8
+    #[account(seeds=[b"transaction_approval", owner.key().as_ref()], bump)]
+    pub transaction_approval: Account<'info, TransactionAproval>, // 9
+                                             // CHECK: destination token account owner
+                                             // pub destination_owner: UncheckedAccount<'info>, // 8
 }
-
 
 pub fn _initialize_extra_account_meta_list(
     ctx: Context<InitializeExtraAccountMetaList>,
 ) -> Result<()> {
-
     // List of issuers
 
     let account_metas = vec![
         // Sender Idendity
         ExtraAccountMeta::new_with_seeds(
             &[
-            Seed::Literal { bytes: b"identity".to_vec() },
-            Seed::AccountKey { index: 0 },
+                Seed::Literal {
+                    bytes: b"identity".to_vec(),
+                },
+                Seed::AccountKey { index: 0 },
             ],
             false, // is_signer
-            false,  // is_writable
+            false, // is_writable
         )?,
         // Receiver Idendity
         ExtraAccountMeta::new_with_seeds(
             &[
-            Seed::Literal { bytes: b"identity".to_vec() },
-            Seed::AccountKey { index: 2 },
+                Seed::Literal {
+                    bytes: b"identity".to_vec(),
+                },
+                Seed::AccountKey { index: 2 },
             ],
             false, // is_signer
-            false,  // is_writable
+            false, // is_writable
         )?,
         // LasTx PDA
         ExtraAccountMeta::new_with_seeds(
             &[
-            Seed::Literal { bytes: b"last_tx".to_vec() },
-            Seed::AccountKey { index: 3 },
+                Seed::Literal {
+                    bytes: b"last_tx".to_vec(),
+                },
+                Seed::AccountKey { index: 3 },
             ],
             false, // is_signer
             true,  // is_writable
-        )?, 
+        )?,
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: b"two_auth".to_vec(),
+                },
+                Seed::AccountKey { index: 0 },
+            ],
+            false, // is_signer
+            false, // is_writable
+        )?,
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: b"transaction_approval".to_vec(),
+                },
+                Seed::AccountKey { index: 3 },
+            ],
+            false, // is_signer
+            true,  // is_writable
+        )?,
     ];
 
     // calculate account size
@@ -128,24 +167,42 @@ pub fn _initialize_extra_account_meta_list(
     Ok(())
 }
 
-pub fn _transfer_hook(ctx: Context<TransferHook>) -> Result<()> {
+pub fn _transfer_hook(ctx: Context<TransferHook>, amount: u64) -> Result<()> {
+    msg!("amount: {:?}", amount);
+
+    let two_auth = &ctx.accounts.two_auth;
+    two_auth.two_auth_entity;
+
+    msg!("Two Auth Entity: {:?}", two_auth.two_auth_entity);
+
+    // let ix = instructions_sysvar_module::load_instruction_at_checked(
+    //     EXPECTED_IX_SYSVAR_INDEX,
+    //     &ctx.accounts.instructions_sysvar,
+    // )?;
 
     // Check if seed is proper one for the account
-    // Check if issuer is authorized 
+    // Check if issuer is authorized
 
     check_idendities(&ctx)?;
     check_not_recovered(&ctx)?;
 
+    let need_two_auth = need_two_auth(&ctx, amount);
+    if need_two_auth {
+        msg!("Need two auth");
+        check_approval(&ctx, amount)?;
+        let transaction_approval = &mut ctx.accounts.transaction_approval;
+        transaction_approval.active = false;
+    }
+
     let last_tx = &mut ctx.accounts.last_tx;
     last_tx.last_tx_timestamp = Clock::get()?.unix_timestamp;
-   
+
     Ok(())
 }
 
-
 #[inline(always)]
 pub fn check_idendities(ctx: &Context<TransferHook>) -> Result<()> {
-    let issuer = &ctx.accounts.idendity_sender.issuers[0];
+    let issuer = &ctx.accounts.idendity_sender.issuers[0]; // Todo proper check of issuer
     if issuer.active == false {
         return Err(IdendityError::IdendityNotActive.into());
     }
@@ -165,7 +222,6 @@ pub fn check_idendities(ctx: &Context<TransferHook>) -> Result<()> {
 
 #[inline(always)]
 pub fn check_not_recovered(ctx: &Context<TransferHook>) -> Result<()> {
-  
     if ctx.accounts.idendity_sender.recovered_token_address.len() > 0 {
         let recovered_address = ctx.accounts.idendity_sender.recovered_token_address[0];
         if recovered_address != ctx.accounts.destination_token.key() {
@@ -174,4 +230,34 @@ pub fn check_not_recovered(ctx: &Context<TransferHook>) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[inline(always)]
+pub fn check_approval(ctx: &Context<TransferHook>, amount: u64) -> Result<()> {
+    let transaction = &ctx.accounts.transaction_approval.transaction;
+    let source_token = &ctx.accounts.source_token;
+    let destination_token = &ctx.accounts.destination_token;
+
+    if !(transaction.amount == amount
+        && transaction.source.eq(&source_token.key())
+        && transaction.destination.eq(&destination_token.key()))
+    {
+        return Err(TwoAuthError::NotAuthorized.into());
+    }
+
+    let time = Clock::get()?.unix_timestamp;
+
+    if transaction.time + 5000 < time {
+        // 5 seconds
+        return Err(TwoAuthError::ExpiredApproval.into());
+    }
+
+    Ok(())
+}
+
+#[inline(always)]
+pub fn need_two_auth(ctx: &Context<TransferHook>, amount: u64) -> bool {
+    let two_auth = &ctx.accounts.two_auth;
+    let functions = &two_auth.functions;
+    return apply_two_auth_functions(amount, functions);
 }

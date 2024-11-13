@@ -40,13 +40,6 @@ pub fn _add_token_account(ctx: Context<AddTokenAccount>) -> Result<()>  {
     ],
         seeds)?;    
 
-    // program::invoke_signed(&ix, &[
-    //     ctx.accounts.token_account.to_account_info(),
-    //     ctx.accounts.mint.to_account_info(),
-    //     ctx.accounts.token_program.to_account_info(),
-    // ],
-    //     seeds)?;
-
 
     Ok(())
 }

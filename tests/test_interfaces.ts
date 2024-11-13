@@ -6,6 +6,8 @@ interface AssociatedTokenAccounts {
   idendity: anchor.web3.PublicKey;
   last_tx: anchor.web3.PublicKey;
   recovery: anchor.web3.PublicKey;
+  approval: anchor.web3.PublicKey;
+  two_auth: anchor.web3.PublicKey;
 }
 interface AccountArgs {
   users: AssociatedTokenAccounts[];

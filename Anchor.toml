@@ -5,10 +5,10 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-undefined_temporary = "GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH"
+undefined_temporary = "G6k7MrFMpQtLDDLzoJf2F6gza9na31KnVwjbUsxGQEPJ"
 
 [programs.Devnet]
-undefined_temporary = "GmNVn427Z6MFJgw5mavyfaDLUqoRbAKVSp3vgh46mEYH"
+undefined_temporary = "G6k7MrFMpQtLDDLzoJf2F6gza9na31KnVwjbUsxGQEPJ"
 
 [registry]
 url = "https://api.apr.dev"

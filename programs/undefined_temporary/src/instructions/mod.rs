@@ -15,3 +15,6 @@ pub use recovery_instructions::*;
 
 pub mod wrapper;
 pub use wrapper::*;
+
+pub mod two_auth_instructions;
+pub use two_auth_instructions::*;

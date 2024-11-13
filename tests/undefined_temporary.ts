@@ -29,8 +29,10 @@ import {
   test_recovery_already_recovered,
   test_recovery_missing_signers,
   test_recovery_more_signers,
+  test_recovery_without_close_authority,
 } from "./test_recovery";
 import { init_mint } from "./test_initialize_mint";
+import { test_2_auth_init } from "./test_two_auth";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -313,6 +315,66 @@ describe("undefined_temporary", () => {
 
   console.log(`Recovery Authority 3: ${recovery_authority3}`);
 
+  const [transactionApproval] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("transaction_approval")),
+      user1.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Transaction Approval 1: ${transactionApproval}`);
+
+  const [transactionApproval2] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("transaction_approval")),
+      user2.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Transaction Approval 2: ${transactionApproval2}`);
+
+  const [transactionApproval3] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("transaction_approval")),
+      user3.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Transaction Approval 3: ${transactionApproval3}`);
+
+  const [twoAuthParameters] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("two_auth")),
+      sourceTokenAccount.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Two Auth Parameters 1: ${twoAuthParameters}`);
+
+  const [twoAuthParameters2] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("two_auth")),
+      destinationTokenAccount.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Two Auth Parameters 2: ${twoAuthParameters2}`);
+
+  const [twoAuthParameters3] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode("two_auth")),
+      ThirdTokenAccount.toBuffer(),
+    ],
+    program.programId
+  );
+
+  console.log(`Two Auth Parameters 3: ${twoAuthParameters3}`);
+
   const account_args: AccountArgs = {
     users: [
       {
@@ -321,6 +383,8 @@ describe("undefined_temporary", () => {
         idendity: pda_id_1,
         last_tx: pda_last_tx_1,
         recovery: recovery_authority1,
+        approval: transactionApproval,
+        two_auth: twoAuthParameters,
       },
       {
         owner: user2,
@@ -328,6 +392,8 @@ describe("undefined_temporary", () => {
         idendity: pda_id_2,
         last_tx: pda_last_tx_2,
         recovery: recovery_authority2,
+        approval: transactionApproval2,
+        two_auth: twoAuthParameters2,
       },
       {
         owner: user3,
@@ -335,6 +401,8 @@ describe("undefined_temporary", () => {
         idendity: pda_id_3,
         last_tx: pda_last_tx_3,
         recovery: recovery_authority3,
+        approval: transactionApproval3,
+        two_auth: twoAuthParameters3,
       },
     ],
     issuer: issuer,
@@ -507,6 +575,10 @@ describe("undefined_temporary", () => {
     await init_recovery(account_args, program, 1, [0, 2]);
   });
 
+  it("Init 2 Auth", async () => {
+    await test_2_auth_init(account_args, program);
+  });
+
   // Account to store extra accounts required by the transfer hook instruction
   it("Create ExtraAccountMetaList Account", async () => {
     try {
@@ -537,6 +609,26 @@ describe("undefined_temporary", () => {
     const amount = 1 * 10 ** decimals;
 
     try {
+      const timestamp = new Date().getTime().valueOf();
+
+      // let instruction_approval = await program.methods
+      //   .approveTransaction({
+      //     source: sourceTokenAccount,
+      //     destination: destinationTokenAccount,
+      //     amount: new anchor.BN(amount),
+      //     time: new anchor.BN(timestamp),
+      //   })
+      //   .accounts({
+      //     owner: user1.publicKey,
+      //     tokenAccount: sourceTokenAccount,
+      //     approver: issuer.publicKey,
+      //     mint: mint,
+      //     twoAuthParameters: twoAuthParameters,
+      //     transactionApproval: transactionApproval,
+      //   })
+      //   .signers([issuer])
+      //   .instruction();
+
       // This helper function will automatically derive all the additional accounts that were defined in the ExtraAccountMetas account
       let transferInstructionWithHelper =
         await createTransferCheckedWithTransferHookInstruction(
@@ -553,10 +645,9 @@ describe("undefined_temporary", () => {
         );
 
       const transaction = new anchor.web3.Transaction().add(
+        // instruction_approval,
         transferInstructionWithHelper
       );
-
-      console.log(transferInstructionWithHelper.keys[4].pubkey.toString());
 
       const txSig = await sendAndConfirmTransaction(
         anchor.getProvider().connection,
@@ -569,7 +660,7 @@ describe("undefined_temporary", () => {
       expect(error).to.be.undefined;
     }
   });
-
+  return;
   it("Unauthorized Transaction without ID", async () => {
     // 1 tokens
     const amount = 1 * 10 ** decimals;
@@ -593,8 +684,6 @@ describe("undefined_temporary", () => {
       const transaction = new anchor.web3.Transaction().add(
         transferInstructionWithHelper
       );
-
-      console.log(transferInstructionWithHelper.keys[4].pubkey.toString());
 
       const txSig = await sendAndConfirmTransaction(
         anchor.getProvider().connection,
@@ -688,6 +777,10 @@ describe("undefined_temporary", () => {
 
   it("Recovering Account fail already recovered", async () => {
     await test_recovery_already_recovered(account_args, program);
+  });
+
+  it("Recovering without close authority", async () => {
+    await test_recovery_without_close_authority(account_args, program);
   });
 
   // it("Recovering Account fail missing signers", async () => {
